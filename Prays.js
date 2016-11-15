@@ -1,4 +1,4 @@
-
+<script type="text/javascript">
 
  function Pray1(){
 
@@ -410,3 +410,4 @@
                 ctx.restore();
             }
         }
+		</script>
