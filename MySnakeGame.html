@@ -18,21 +18,29 @@
 <script type="text/javascript" src="Prays.js"></script>
 <script>
 
+    // import prays from another file
     var imported = document.createElement('script');
     imported.src = 'Prays.js';
     document.head.appendChild(imported);
 
     var foodMusic = document.getElementById("food");
-    var gameOn = true;
+    var gameOn = false;
+    var gameStarted = false;
     var mySnake;
     var myPray;
     var ctx;
-    var score = 0;
+    var score;
+    var highScore=0;
+    var interval;
+    var speed;
     var pray = [];
 
     function startGame() {
+        score = 0;
+        speed = 60;
+        interval = setInterval(updateGameArea, speed);
         myGameArea.start();
-        mySnake = new Snake(10);
+        mySnake = new Snake(25);
         //myPray = new Pray();
         pray.push(new Pray1());
         pray.push(new Pray2());
@@ -40,10 +48,10 @@
         pray.push(new Pray4());
         pray.push(new Pray5());
         pray.push(new Pray6());
-        myPray = pray[4];
+        myPray = pray[0];
         ctx = myGameArea.context;
     }
-
+    // setup canvas
     var myGameArea = {
         canvas : document.createElement("canvas"),
         start : function() {
@@ -51,20 +59,64 @@
             this.canvas.height = window.innerHeight - 20 - window.innerHeight%20;
             this.context = this.canvas.getContext("2d");
             document.body.insertBefore(this.canvas, document.body.childNodes[0]);
-            this.interval = setInterval(updateGameArea, 70);
         },
+        // clear canvas
         clear : function() {
             this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
         },
-
-        showMenu : function(){
-            ctx.font = "30px" + " " + "Consolas";
+        // display start screen, prompt for action
+        startScreen : function(){
+            ctx.font = "90px" + " " + "Consolas";
             ctx.fillStyle = "black";
-            ctx.fillText("Score: " + score, 0, 20);
+            ctx.textAlign = "center";
+            ctx.fillText("Snake Game",this.canvas.width/2, this.canvas.height/2);
+            ctx.font = "20px" + " " + "Consolas";
+            ctx.fillText("Press Space To Play",this.canvas.width/2, this.canvas.height/2 + 45);
+            document.onkeydown = function(e) {
+                var key = e.keyCode;
+                if(key == 32) {
+                    gameOn = true;
+                    gameStarted = true;
+                }
+            }
+        },
+        // display game over screen, prompt for action
+        gameOver : function(){
+            clearInterval(interval);
+            ctx.font = "90px" + " " + "Consolas";
+            ctx.fillStyle = "black";
+            ctx.textAlign = "center";
+            ctx.fillText("Game Over",this.canvas.width/2, this.canvas.height/2);
+            ctx.font = "20px" + " " + "Consolas";
+            ctx.fillText("Press Space To Try Again",this.canvas.width/2, this.canvas.height/2 + 45);
+            ctx.font = "20px" + " " + "Consolas";
+            ctx.fillStyle = "blue";
+            ctx.fillText("Score " + score,this.canvas.width/2, this.canvas.height/2 + 90);
+            document.onkeydown = function(e) {
+                var key = e.keyCode;
+                if(key == 32) {
+                    gameOn = true;
+                    startGame();
+                }
+            }
+        },
+        // draw scores
+        showScore : function(){
+            ctx.font = "20px" + " " + "Consolas";
+            if(score==highScore){
+                ctx.fillStyle = "red";
+            }else {
+                ctx.fillStyle = "black";
+            }
+            ctx.textAlign = "left";
+            ctx.fillText("High Score: " + highScore + "   ", 0, 20);
+            ctx.font = "20px" + " " + "Consolas";
+            ctx.fillStyle = "blue";
+            ctx.textAlign = "left";
+            ctx.fillText("     Score: " + score, 0, 40);
         }
-
     }
-
+    // generate random rgb
     function getRandomColor() {
         console.log(myGameArea.canvas.width);
         var r = 255 * Math.random()|0,
@@ -73,68 +125,96 @@
         return 'rgb(' + r + ',' + g + ',' + b + ')';
     }
 
+    // snake object
     function Snake(length) {
         this.length = length;
         var crawlingDirection = "E";
         this.bodyParts = [];
         this.head;
-
+        // return array of body parts objects
         this.getSnake = function(){
             if(!this.bodyParts.length > 0){
+                // if snake doesn't exists then create
                 this.bodyParts = this.createSnake();
             }
             this.head = this.bodyParts[0];
             return this.bodyParts;
         }
-
+        // return head body part
         this.getHead = function(){
             return this.bodyParts[0];
         }
-
+        // create snake in specified length
         this.createSnake = function() {
             var bodyParts = new Array();
             for(var i = this.length - 1 ; i >= 0 ;  i--) {
+                // create and add new body part
                 bodyParts.push(new SnakeBodyPart(i,0));
             }
             return bodyParts;
         }
-
+        // move snake on canvas
         this.crawl = function(){
+            // draw each body part
             for(var i = 0; i < this.getSnake().length; i++) {
                 var snakePart = this.bodyParts[i];
                 snakePart.draw();
             }
+            // update position
             this.updateDirection();
+            // check if not biting its own arse
+            this.isCollidingWithItself();
+            // check for collision with the pray
             this.eat();
+
         }
 
+        // check for collision with the pray
         this.eat = function(){
-
+            // if head and pray in the same cell
             if(this.getHead().x == myPray.x && this.getHead().y == myPray.y) {
                 score++;
-
+                if(score>highScore){
+                    highScore=score;
+                }
+                // get random pray from the array
                 min = Math.ceil(0);
                 max = Math.floor(5);
                 myPray = pray[Math.floor(Math.random() * pray.length)];
-
+                // set random position
                 myPray.x = Math.round(Math.random() * (myGameArea.canvas.width - 20) / 20);
                 myPray.y = Math.round(Math.random() * (myGameArea.canvas.height - 20) / 20);
-
+                // add new body part
                 this.bodyParts.unshift(new SnakeBodyPart(this.bodyParts[0].x,this.bodyParts[0].y));
+                // play sound
                 foodMusic.currentTime = 0;
                 foodMusic.play();
+                // increase speed
+                clearInterval(interval);
+                if(speed > 30){
+                    speed -=1;
+                }
+                interval = setInterval(updateGameArea, speed);
             }
         }
-
+        // checks if snake's head collides with its body
+        this.isCollidingWithItself = function(){
+            for(var i = 1; i< this.getSnake().length; i++ ){
+                var bodyPart = this.bodyParts[i];
+                if(this.getHead().x == bodyPart.x && this.getHead().y == bodyPart.y){
+                    // if collides then game over
+                    gameOn = false;
+                }
+            }
+        }
+        // user control
         this.updateDirection = function(){
-                //Update the position of the snake
                 var head_x = this.head.x;
                 var head_y = this.head.y;
 
-                //Get the directions
+                //Get the directions from user
                 document.onkeydown = function(e) {
                     var key = e.keyCode;
-
                     if(key == 37 && crawlingDirection != "E") setTimeout(function() {
                         crawlingDirection = "W"; }, 30);
                     else if(key == 38 && crawlingDirection != "S") setTimeout(function() {crawlingDirection = "N"; }, 30);
@@ -155,7 +235,7 @@
                 tail.x = head_x;
                 tail.y = head_y;
                 this.bodyParts.unshift(tail);
-
+            // draw on another side of the canvas if crossing its border
             if (head_x >= myGameArea.canvas.width/20){
                 this.getHead().x = 0;
             } else if(head_x <= -1) {
@@ -169,12 +249,11 @@
             }
         }
     }
-
+    // snake body parts, holds individual positions and draws on canvas
     function SnakeBodyPart(x,y){
         this.x = x;
         this.y = y;
         this.color = getRandomColor();
-
         this.draw = function () {
 
             ctx.fillStyle = "white";
@@ -199,9 +278,6 @@
             ctx.lineWidth = 1;
             ctx.translate(this.x*20+10,this.y*20+10);
             ctx.rotate(-convertToRadians(angle));
-            <!-- set the fill style -->
-            //ctx.fillStyle = getRandomColor();
-            //ctx.fillRect(-25,-25,20,50);
             ctx.strokeRect(-6,-6,12,12);
             ctx.restore();
 
@@ -209,20 +285,13 @@
             ctx.lineWidth = 0.5;
             ctx.translate(this.x*20+10,this.y*20+10);
             ctx.rotate(-convertToRadians(angle));
-            <!-- set the fill style -->
-            //ctx.fillStyle = getRandomColor();
-            //ctx.fillRect(-25,-25,20,50);
-            ctx.strokeRect(-1,-1,2,2
-            );
+            ctx.strokeRect(-1,-1,2,2);
             ctx.restore();
 
             ctx.save();
             ctx.lineWidth = 0.5;
             ctx.translate(this.x*20+10,this.y*20+10);
             ctx.rotate(convertToRadians(angle));
-            <!-- set the fill style -->
-            //ctx.fillStyle = getRandomColor();
-            //ctx.fillRect(-25,-25,20,50);
             ctx.strokeRect(-8,-8,16,16);
             ctx.restore();
 
@@ -230,55 +299,16 @@
             ctx.lineWidth = 0.5;
             ctx.translate(this.x*20+10,this.y*20+10);
             ctx.rotate(-convertToRadians(angle));
-            <!-- set the fill style -->
-            //ctx.fillStyle = getRandomColor();
-            //ctx.fillRect(-25,-25,20,50);
             ctx.strokeRect(-8,-8,16,16);
             ctx.restore();
         }
-
     }
 
-    function component(width, height, color, x, y) {
-        this.width = width;
-        this.height = height;
-        this.speedX = 0;
-        this.speedY = 0;
-        this.x = x;
-        this.y = y;
-        this.update = function() {
-            ctx = myGameArea.context;
-            ctx.fillStyle = color;
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-        }
-        this.newPos = function() {
-            this.x += this.speedX;
-            this.y += this.speedY;
-        }
-    }
-
-    function updateGameArea() {
-
-        myGameArea.clear();
-        if(gameOn){
-            myGameArea.showMenu();
-            mySnake.crawl();
-            myPray.draw();
-        } else {
-
-        }
-
-
-    }
-
-
-
+    // methods used for the rotations of prays and snakew body parts
     var angle = 5;
     function convertToRadians(degree) {
-
         return degree*(Math.PI/180);
     }
-
     function incrementAngle() {
         angle+=5;
         if(angle > 360) {
@@ -287,8 +317,22 @@
     }
 
 
-    function drawMenu() {
-
+    // game loop
+    function updateGameArea() {
+        myGameArea.clear();
+        if(gameStarted == false){
+            // shows only once
+            myGameArea.startScreen();
+        }else{
+            if(gameOn){
+                // draw score, snake and pray
+                myGameArea.showScore();
+                mySnake.crawl();
+                myPray.draw();
+            } else {
+                myGameArea.gameOver();
+            }
+        }
     }
 
 </script>
